@@ -1,21 +1,21 @@
-from keep_alive import keep_alive
-keep_alive()  # Starts the web server in the background
-
 import os
 import logging
+from dotenv import load_dotenv  # Import this
+
+# Load keys from .env file (only works locally)
+load_dotenv()
+
 from telegram import Update
 from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, filters, ContextTypes
 import google.generativeai as genai
+from keep_alive import keep_alive
+from scraper import get_all_cinemas_data
 
-
-# Import your scraper function directly
-# Make sure scraper.py is in the same folder and has the 'get_all_cinemas_data' function
-from scraper import get_all_cinemas_data 
+keep_alive()
 
 # --- CONFIGURATION ---
-os.environ["GOOGLE_API_KEY"] = "AIzaSyAxeXa0q_4yrIE_X5UTcj-P_htwT4Z-9B4"
-
-TELEGRAM_TOKEN = "8535124656:AAHfyWkzYboZmwOYUzidgz10BosPbdtcWFE"
+GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
+TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
 
 # --- SETUP AI ---
 genai.configure(api_key=os.environ["GOOGLE_API_KEY"])
