@@ -20,9 +20,9 @@ TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
 # --- SETUP AI ---
 genai.configure(api_key=os.environ["GOOGLE_API_KEY"])
 try:
-    model = genai.GenerativeModel('gemini-flash-latest')
+    model = genai.GenerativeModel('gemini-2.5-flash-lite')
 except:
-    model = genai.GenerativeModel('gemini-1.5-flash')
+    model = genai.GenerativeModel('gemini-flash-lite-latest')
 
 # --- LOGGING ---
 logging.basicConfig(
