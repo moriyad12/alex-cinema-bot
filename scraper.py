@@ -8,6 +8,9 @@ CINEMA_IDS = [
     "3101175", "3101032", "3101041"
 ]
 
+import requests
+from bs4 import BeautifulSoup
+
 def get_movies_for_cinema(cinema_id):
     url = f"https://elcinema.com/en/theater/{cinema_id}/"
     
@@ -22,13 +25,13 @@ def get_movies_for_cinema(cinema_id):
             
         soup = BeautifulSoup(response.content, 'html.parser')
         
-        # 1. Extract Cinema Name from the Page Title
+        # 1. Extract Cinema Name
         page_title = soup.title.string if soup.title else f"Cinema {cinema_id}"
         cinema_name = page_title.split('-')[0].strip()
 
         movies_data = []
 
-        # Find movie rows
+        # Find movie rows (each movie is in a 'row' div)
         rows = soup.find_all('div', class_='row')
 
         for row in rows:
@@ -38,22 +41,39 @@ def get_movies_for_cinema(cinema_id):
                 continue 
             
             movie_name = title_tag.text.strip()
-
-            # B. Get Showtimes AND Prices
             shows_list = []
-            showtime_table = row.find('table', class_='showtimes')
-            
-            if showtime_table:
-                for tr in showtime_table.find_all('tr'):
+
+            # B. Find ALL showtime tables (Different experiences are in different tables)
+            tables = row.find_all('table', class_='showtimes')
+
+            for table in tables:
+                # --- 1. Get Experience Type (e.g., MAX VIP, Standard) ---
+                # It is usually in an <h6> tag inside the table
+                exp_header = table.find('h6')
+                experience_type = exp_header.text.strip() if exp_header else "Standard"
+
+                # --- 2. Iterate through rows in this specific table ---
+                for tr in table.find_all('tr'):
                     time_tag = tr.find('strong')
-                    price_tag = tr.find('span', class_='price')
                     
                     if time_tag:
                         time_text = time_tag.text.strip()
+                        
+                        # Get Price
+                        price_tag = tr.find('span', class_='price')
                         price_text = price_tag.text.strip() if price_tag else "Unknown Price"
-                        shows_list.append(f"{time_text} ({price_text})")
+                        
+                        # --- 3. Check for 3D SVG ---
+                        # If the SVG with id "3d_svg" exists in this row, it is 3D
+                        is_3d = bool(tr.find('svg', id='3d_svg'))
+                        format_type = "3D" if is_3d else "2D"
+
+                        # Format the output string
+                        # Example: "02:30 pm (160 EGP) - MAX VIP [3D]"
+                        shows_list.append(
+                            f"{time_text} ({price_text}) - {experience_type} [{format_type}]"
+                        )
             
-            # Only add if we found shows
             if shows_list and movie_name:
                 movies_data.append({
                     "movie": movie_name,

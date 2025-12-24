@@ -2,7 +2,7 @@ import os
 import logging
 from dotenv import load_dotenv  # Import this
 
-# Load keys from .env file (only works locally)
+# Load keys from .env file
 load_dotenv()
 
 from telegram import Update
@@ -73,9 +73,7 @@ async def refresh_data_job(context: ContextTypes.DEFAULT_TYPE):
         # 2. Save to file and update global variable
         CINEMA_DATA = save_data_to_file(new_data_list)
         print("✅ Job Queue: Data refreshed and saved successfully!")
-        
-        # Optional: Send a message to you (the admin) confirming update
-        # await context.bot.send_message(chat_id="YOUR_PERSONAL_CHAT_ID", text="✅ Schedules updated!")
+
     else:
         print("⚠️ Job Queue: Failed to scrape data. Keeping old data.")
 
