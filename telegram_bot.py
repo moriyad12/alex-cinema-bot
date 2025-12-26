@@ -104,9 +104,16 @@ async def ask_gemini_async(user_query, context_text):
 # --- TELEGRAM HANDLERS ---
 async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
-        "👋 Hello! I am your Alexandria Cinema Bot.\n"
-        "I update my data automatically every 12 hours.\n\n"
-        "Ask me: 'What is playing at San Stefano?'"
+        "👋 Hello! I am your Alexandria Cinema Bot.\n\n"
+        "I have access to ALL movie schedules and showtimes from cinemas across Alexandria! 🎬\n\n"
+        "Try asking me:\n"
+        "• 'What movies are playing?'\n"
+        "• 'Where can I watch [movie name]?'\n"
+        "• 'What are the showtimes for [movie name]?'\n"
+        "• 'How much are tickets for [movie name]?'\n"
+        "• 'Which cinema has the cheapest tickets?'\n"
+        "• 'Show me available Cinemas'\n\n"
+        "Data updates automatically every 12 hours. ⏰"
     )
 
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
