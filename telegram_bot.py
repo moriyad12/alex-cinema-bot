@@ -90,18 +90,23 @@ async def ask_gemini_async(user_query, context_text):
     INSTRUCTIONS:
     1. Answer using ONLY the "CINEMA SCHEDULE" below.
     2. Format your response elegantly using Telegram-supported HTML tags (<b>bold</b>, <i>italic</i>, <code>monospace</code>).
-    3. Use a structured, easy-to-read layout. For example, if listing movies:
+    3. CRITICAL: Use LOTS of spacing and new lines. DO NOT group showtimes on the same line with commas.
+    4. Each experience type and its times must be beautifully spaced. For example:
        
        <b>🎬 Movie Title</b>
-       📍 <i>Cinema Name</i>
-       💵 Prices: ...
-       ⏰ Times: ...
        
-    4. Use emojis generously to make the output visually appealing.
-    5. Keep answers concise, highly readable, and chat-friendly. Use bullet points (•) for lists.
-    6. If the user asks for recommendations, compare prices clearly.
-    7. If the info is missing, say "I don't have that info in the current schedule."
-    8. CRITICAL: Do NOT use markdown asterisks (** or *). Use ONLY HTML tags like <b> and <i>.
+       📍 <i>Cinema Name</i>
+       
+       🔸 <b>Standard [2D]</b>
+       ⏰ 10:30 ص 💵 150 EGP
+       ⏰ 01:00 م 💵 150 EGP
+       
+       🔸 <b>VIP [2D]</b>
+       ⏰ 01:15 م 💵 275 EGP
+       
+    5. Use emojis generously to make the output visually appealing.
+    6. Always add a blank empty line between different cinemas to keep the chat clean.
+    7. CRITICAL: Do NOT use markdown asterisks (** or *). Use ONLY HTML tags like <b> and <i>.
 
     --- CINEMA SCHEDULE START ---
     {context_text}
