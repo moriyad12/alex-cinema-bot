@@ -6,10 +6,13 @@ from dotenv import load_dotenv  # Import this
 load_dotenv()
 
 from telegram import Update
+from telegram.constants import ParseMode
 from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, filters, ContextTypes
 import google.generativeai as genai
 from keep_alive import keep_alive
 from scraper import get_all_cinemas_data
+# --- BACKGROUND JOB: AUTO-REFRESH ---
+import asyncio
 
 keep_alive()
 
@@ -29,6 +32,7 @@ logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
     level=logging.INFO
 )
+logger = logging.getLogger(__name__)
 
 # --- GLOBAL DATA STORE ---
 # We use a global variable so the bot can access the latest data in memory
@@ -59,35 +63,45 @@ def load_data_from_file():
     except FileNotFoundError:
         return None
 
-# --- BACKGROUND JOB: AUTO-REFRESH ---
+
 async def refresh_data_job(context: ContextTypes.DEFAULT_TYPE):
     """Runs every 12 hours to update data"""
     global CINEMA_DATA
-    print("🔄 Job Queue: Starting scheduled data refresh...")
+    logger.info("🔄 Job Queue: Starting scheduled data refresh...")
     
     # 1. Scrape new data (This might take 10-20 seconds)
-    # We run it in a way that doesn't block the bot
-    new_data_list = get_all_cinemas_data()
+    # Run the blocking scraper in a separate thread so it doesn't block the async event loop
+    loop = asyncio.get_running_loop()
+    new_data_list = await loop.run_in_executor(None, get_all_cinemas_data)
     
     if new_data_list:
         # 2. Save to file and update global variable
         CINEMA_DATA = save_data_to_file(new_data_list)
-        print("✅ Job Queue: Data refreshed and saved successfully!")
+        logger.info("✅ Job Queue: Data refreshed and saved successfully!")
 
     else:
-        print("⚠️ Job Queue: Failed to scrape data. Keeping old data.")
+        logger.warning("⚠️ Job Queue: Failed to scrape data. Keeping old data.")
 
 # --- AI FUNCTION ---
 async def ask_gemini_async(user_query, context_text):
     prompt = f"""
-    You are a helpful Movie Assistant for Alexandria, Egypt.
+    You are a premium Movie Assistant for Alexandria, Egypt.
     
     INSTRUCTIONS:
     1. Answer using ONLY the "CINEMA SCHEDULE" below.
-    2. If the user asks for a specific movie, list the cinemas and times clearly.
-    3. If the user asks for recommendations (e.g., "cheap tickets"), compare the prices.
-    4. If the info is missing, say "I don't have that info in the current schedule."
-    5. Keep answers short and chat-friendly. Use emojis (🎬, ⏰, 💵).
+    2. Format your response elegantly using Telegram-supported HTML tags (<b>bold</b>, <i>italic</i>, <code>monospace</code>).
+    3. Use a structured, easy-to-read layout. For example, if listing movies:
+       
+       <b>🎬 Movie Title</b>
+       📍 <i>Cinema Name</i>
+       💵 Prices: ...
+       ⏰ Times: ...
+       
+    4. Use emojis generously to make the output visually appealing.
+    5. Keep answers concise, highly readable, and chat-friendly. Use bullet points (•) for lists.
+    6. If the user asks for recommendations, compare prices clearly.
+    7. If the info is missing, say "I don't have that info in the current schedule."
+    8. CRITICAL: Do NOT use markdown asterisks (** or *). Use ONLY HTML tags like <b> and <i>.
 
     --- CINEMA SCHEDULE START ---
     {context_text}
@@ -125,7 +139,17 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     await context.bot.send_chat_action(chat_id=update.effective_chat.id, action='typing')
     ai_reply = await ask_gemini_async(update.message.text, CINEMA_DATA)
-    await update.message.reply_text(ai_reply)
+    try:
+        await update.message.reply_text(ai_reply, parse_mode=ParseMode.HTML)
+    except Exception as e:
+        logger.error(f"HTML Parse Error: {e}. Falling back to plain text.")
+        await update.message.reply_text(ai_reply)
+
+# --- ERROR HANDLER ---
+async def error_handler(update: object, context: ContextTypes.DEFAULT_TYPE):
+    logger.error(msg="Exception while handling an update:", exc_info=context.error)
+    if update and hasattr(update, 'message') and update.message:
+        await update.message.reply_text("⚠️ An unexpected error occurred. My developers have been notified.")
 
 # --- MAIN ---
 if __name__ == '__main__':
@@ -133,11 +157,11 @@ if __name__ == '__main__':
     CINEMA_DATA = load_data_from_file()
     
     if not CINEMA_DATA:
-        print("⚠️ No local file found. Scraper will run immediately after bot starts.")
+        logger.warning("⚠️ No local file found. Scraper will run immediately after bot starts.")
     else:
-        print("✅ Loaded initial data from file.")
+        logger.info("✅ Loaded initial data from file.")
 
-    print("🤖 Telegram Bot is starting...")
+    logger.info("🤖 Telegram Bot is starting...")
     
     # 2. Build Application
     app = ApplicationBuilder().token(TELEGRAM_TOKEN).build()
@@ -145,6 +169,7 @@ if __name__ == '__main__':
     # 3. Add Handlers
     app.add_handler(CommandHandler("start", start_command))
     app.add_handler(MessageHandler(filters.TEXT & (~filters.COMMAND), handle_message))
+    app.add_error_handler(error_handler)
 
     # 4. Schedule the Refresh Job
     job_queue = app.job_queue
